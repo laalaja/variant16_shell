@@ -1,0 +1,5 @@
+ls
+head -n 2 hello.txt
+cal 9 2026
+mkdir temp
+ls

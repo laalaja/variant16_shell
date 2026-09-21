@@ -1,0 +1,12 @@
+ls
+cd home
+ls
+cd student/docs
+ls
+head -n 3 notes.txt
+tac notes.txt
+cal
+mkdir created_in_memory
+ls
+unknown_command
+ls
