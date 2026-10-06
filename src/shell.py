@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 
+from vfs import VirtualFileSystem
 
 @dataclass
 class CommandResult:
@@ -11,18 +12,22 @@ class CommandResult:
     is_error: bool = False
     should_exit: bool = False
 
-
 class ShellEmulator:
     """Implement the first REPL prototype."""
 
-    def __init__(self, vfs_name: str) -> None:
+    def __init__(self, vfs: VirtualFileSystem) -> None:
         """Create the shell."""
-        self.vfs_name = vfs_name
+        self.vfs = vfs
         self.handlers = {
             "ls": self._ls,
             "cd": self._cd,
             "exit": self._exit,
         }
+
+    @property
+    def vfs_name(self) -> str:
+        """Return the VFS name."""
+        return self.vfs.name
 
     def parse(self, line: str) -> tuple[str, list[str]]:
         """Split a line into command and arguments."""

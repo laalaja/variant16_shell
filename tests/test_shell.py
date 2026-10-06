@@ -10,14 +10,22 @@ sys.path.insert(
 )
 
 from shell import ShellEmulator
-
+from vfs import VirtualFileSystem
 
 class ShellTests(unittest.TestCase):
     """Test command parsing and REPL commands."""
 
     def setUp(self) -> None:
         """Create a shell before every test."""
-        self.shell = ShellEmulator("demo-vfs")
+        vfs = VirtualFileSystem(
+            "demo-vfs",
+            {
+                "type": "dir",
+                "children": {},
+            },
+        )
+
+        self.shell = ShellEmulator(vfs)
 
     def test_parse(self) -> None:
         """Parser should split command and arguments."""

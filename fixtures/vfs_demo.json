@@ -1,0 +1,38 @@
+{
+  "name": "demo-vfs",
+  "root": {
+    "type": "dir",
+    "children": {
+      "hello.txt": {
+        "type": "file",
+        "encoding": "text",
+        "content": "Hello from VFS!\nSecond line\nThird line"
+      },
+      "home": {
+        "type": "dir",
+        "children": {
+          "student": {
+            "type": "dir",
+            "children": {
+              "docs": {
+                "type": "dir",
+                "children": {
+                  "notes.txt": {
+                    "type": "file",
+                    "encoding": "text",
+                    "content": "line 1\nline 2\nline 3\nline 4\nline 5"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "binary.dat": {
+        "type": "file",
+        "encoding": "base64",
+        "content": "AAEC"
+      }
+    }
+  }
+}
