@@ -1,6 +1,7 @@
 """Tkinter graphical interface for the shell emulator."""
 
 import tkinter as tk
+from pathlib import Path
 from tkinter import ttk
 
 from shell import ShellEmulator
@@ -13,6 +14,8 @@ class ShellGUI:
         self,
         root: tk.Tk,
         shell: ShellEmulator,
+        vfs_path: str,
+        script_path: str | None,
     ) -> None:
         """Create the graphical interface."""
         self.root = root
@@ -23,6 +26,17 @@ class ShellGUI:
         )
 
         self._build_widgets()
+
+        self._write(f"[config] vfs={vfs_path}\n")
+        self._write(
+            f"[config] script={script_path or '-'}\n\n"
+        )
+
+        if script_path:
+            self.root.after(
+                100,
+                lambda: self._run_script(script_path),
+            )
 
     def _build_widgets(self) -> None:
         """Create output and input widgets."""
@@ -72,6 +86,10 @@ class ShellGUI:
         line = self.entry.get()
         self.entry.delete(0, "end")
 
+        self._execute_and_show(line)
+
+    def _execute_and_show(self, line: str) -> bool:
+        """Execute a command and display its result."""
         self._write(
             f"{self.shell.prompt()} {line}\n"
         )
@@ -83,6 +101,39 @@ class ShellGUI:
 
         if result.should_exit:
             self.root.destroy()
+            return False
+
+        return not result.is_error
+
+    def _run_script(self, script_path: str) -> None:
+        """Execute startup script until the first error."""
+        path = Path(script_path)
+
+        try:
+            lines = path.read_text(
+                encoding="utf-8"
+            ).splitlines()
+        except OSError as error:
+            self._write(
+                f"Startup script error: {error}\n"
+            )
+            return
+
+        for line_number, line in enumerate(
+            lines,
+            start=1,
+        ):
+            line = line.strip()
+
+            if not line:
+                continue
+
+            if not self._execute_and_show(line):
+                self._write(
+                    "Startup script stopped "
+                    f"at line {line_number}\n"
+                )
+                break
 
     def _write(self, text: str) -> None:
         """Append text to the output widget."""

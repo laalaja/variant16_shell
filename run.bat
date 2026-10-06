@@ -1,2 +1,2 @@
 @echo off
-python src\main.py --vfs fixtures\vfs_demo.json
+python src\main.py --vfs demo-vfs
