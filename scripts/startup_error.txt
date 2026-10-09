@@ -1,4 +1,5 @@
 ls
-cd home
+cd /home/student/docs
+head -n 2 notes.txt
 unknown_command
 ls

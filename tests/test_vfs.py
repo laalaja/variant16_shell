@@ -16,48 +16,50 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 class VFSTests(unittest.TestCase):
-    """Test loading virtual file systems."""
+    """Test loading and using virtual file systems."""
+
+    def setUp(self) -> None:
+        """Load the demonstration VFS."""
+        path = PROJECT_ROOT / "fixtures" / "vfs_demo.json"
+        self.vfs = VirtualFileSystem.from_json(str(path))
 
     def test_load_demo_vfs(self) -> None:
         """Demo VFS should load from JSON."""
-        path = PROJECT_ROOT / "fixtures" / "vfs_demo.json"
-
-        vfs = VirtualFileSystem.from_json(str(path))
-
-        self.assertEqual(vfs.name, "demo-vfs")
+        self.assertEqual(self.vfs.name, "demo-vfs")
 
     def test_nested_directories_exist(self) -> None:
         """Demo VFS should contain nested directories."""
-        path = PROJECT_ROOT / "fixtures" / "vfs_demo.json"
+        node = self.vfs.get_node("/home/student/docs")
+        self.assertIn("notes.txt", node["children"])
 
-        vfs = VirtualFileSystem.from_json(str(path))
+    def test_list_dir(self) -> None:
+        """VFS should list directory contents."""
+        items = self.vfs.list_dir("/", "/")
+        self.assertIn("home", items)
+        self.assertIn("hello.txt", items)
 
-        home = vfs.root["children"]["home"]
-        student = home["children"]["student"]
-        docs = student["children"]["docs"]
+    def test_change_dir(self) -> None:
+        """VFS should resolve nested directories."""
+        path = self.vfs.change_dir("student/docs", "/home")
+        self.assertEqual(path, "/home/student/docs")
 
-        self.assertIn(
+    def test_read_text(self) -> None:
+        """VFS should read text files."""
+        text = self.vfs.read_text(
             "notes.txt",
-            docs["children"],
+            "/home/student/docs",
         )
+        self.assertIn("line 1", text)
 
     def test_changes_are_only_in_memory(self) -> None:
         """Changing loaded VFS must not change JSON."""
-        path = PROJECT_ROOT / "fixtures" / "vfs_demo.json"
-
-        first = VirtualFileSystem.from_json(str(path))
-
-        first.root["children"]["temporary"] = {
+        self.vfs.root["children"]["temporary"] = {
             "type": "dir",
             "children": {},
         }
-
-        second = VirtualFileSystem.from_json(str(path))
-
-        self.assertNotIn(
-            "temporary",
-            second.root["children"],
-        )
+        path = PROJECT_ROOT / "fixtures" / "vfs_demo.json"
+        reloaded = VirtualFileSystem.from_json(str(path))
+        self.assertNotIn("temporary", reloaded.root["children"])
 
 
 if __name__ == "__main__":

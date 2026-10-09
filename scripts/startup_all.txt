@@ -1,0 +1,12 @@
+ls
+cd home
+ls
+cd student/docs
+ls
+head -n 3 notes.txt
+tac notes.txt
+cal 9 2026
+cd /
+ls
+unknown_command
+ls
