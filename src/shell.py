@@ -17,10 +17,10 @@ class CommandResult:
 
 
 class ShellEmulator:
-    """Execute commands against a virtual file system."""
+    """Execute shell commands against an in-memory VFS."""
 
     def __init__(self, vfs: VirtualFileSystem) -> None:
-        """Create the shell."""
+        """Create the shell at the VFS root."""
         self.vfs = vfs
         self.cwd = "/"
         self.handlers = {
@@ -29,6 +29,7 @@ class ShellEmulator:
             "cal": self._cal,
             "head": self._head,
             "tac": self._tac,
+            "mkdir": self._mkdir,
             "exit": self._exit,
         }
 
@@ -40,22 +41,27 @@ class ShellEmulator:
     def parse(self, line: str) -> tuple[str, list[str]]:
         """Split a line into command and arguments."""
         parts = line.strip().split()
+
         if not parts:
             return "", []
+
         return parts[0], parts[1:]
 
     def execute(self, line: str) -> CommandResult:
         """Execute one command."""
         command, args = self.parse(line)
+
         if not command:
             return CommandResult()
 
         handler = self.handlers.get(command)
+
         if handler is None:
             return CommandResult(
                 f"Unknown command: {command}",
                 is_error=True,
             )
+
         return handler(args)
 
     def prompt(self) -> str:
@@ -68,10 +74,12 @@ class ShellEmulator:
             return self._usage("ls [PATH]")
 
         path = args[0] if args else "."
+
         try:
             items = self.vfs.list_dir(path, self.cwd)
         except VFSError as error:
-            return self._error(error)
+            return CommandResult(str(error), is_error=True)
+
         return CommandResult("\n".join(items))
 
     def _cd(self, args: list[str]) -> CommandResult:
@@ -82,62 +90,47 @@ class ShellEmulator:
         try:
             self.cwd = self.vfs.change_dir(args[0], self.cwd)
         except VFSError as error:
-            return self._error(error)
+            return CommandResult(str(error), is_error=True)
+
         return CommandResult()
 
     def _cal(self, args: list[str]) -> CommandResult:
-        """Display a month or year calendar."""
+        """Display a calendar."""
         try:
-            text = self._calendar_text(args)
+            if not args:
+                today = date.today()
+                text = calendar.month(today.year, today.month)
+            elif len(args) == 1:
+                year = int(args[0])
+                text = calendar.calendar(year)
+            elif len(args) == 2:
+                month = int(args[0])
+                year = int(args[1])
+                text = calendar.month(year, month)
+            else:
+                return self._usage("cal [MONTH] [YEAR]")
         except (ValueError, calendar.IllegalMonthError):
             return CommandResult(
                 "Invalid calendar arguments",
                 is_error=True,
             )
-        return CommandResult(text.rstrip())
 
-    @staticmethod
-    def _calendar_text(args: list[str]) -> str:
-        """Build calendar output from command arguments."""
-        if not args:
-            today = date.today()
-            return calendar.month(today.year, today.month)
-        if len(args) == 1:
-            return calendar.calendar(int(args[0]))
-        if len(args) == 2:
-            month = int(args[0])
-            year = int(args[1])
-            return calendar.month(year, month)
-        raise ValueError
+        return CommandResult(text.rstrip())
 
     def _head(self, args: list[str]) -> CommandResult:
         """Display the first lines of a file."""
-        parsed = self._parse_head_arguments(args)
-        if isinstance(parsed, CommandResult):
-            return parsed
+        count = 10
 
-        count, path = parsed
-        try:
-            text = self.vfs.read_text(path, self.cwd)
-        except VFSError as error:
-            return self._error(error)
-
-        return CommandResult("\n".join(text.splitlines()[:count]))
-
-    def _parse_head_arguments(
-        self,
-        args: list[str],
-    ) -> tuple[int, str] | CommandResult:
-        """Parse head command arguments."""
         if len(args) == 1:
-            return 10, args[0]
+            path = args[0]
+        elif len(args) == 3 and args[0] == "-n":
+            try:
+                count = int(args[1])
+            except ValueError:
+                return self._usage("head [-n COUNT] FILE")
 
-        if len(args) != 3 or args[0] != "-n":
-            return self._usage("head [-n COUNT] FILE")
-
-        try:
-            count = int(args[1])
-        except ValueError:
+            path = args[2]
+        else:
             return self._usage("head [-n COUNT] FILE")
 
         if count < 0:
@@ -145,7 +138,15 @@ class ShellEmulator:
                 "COUNT must be non-negative",
                 is_error=True,
             )
-        return count, args[2]
+
+        try:
+            text = self.vfs.read_text(path, self.cwd)
+        except VFSError as error:
+            return CommandResult(str(error), is_error=True)
+
+        lines = text.splitlines()[:count]
+
+        return CommandResult("\n".join(lines))
 
     def _tac(self, args: list[str]) -> CommandResult:
         """Display file lines in reverse order."""
@@ -155,23 +156,35 @@ class ShellEmulator:
         try:
             text = self.vfs.read_text(args[0], self.cwd)
         except VFSError as error:
-            return self._error(error)
+            return CommandResult(str(error), is_error=True)
 
         lines = reversed(text.splitlines())
+
         return CommandResult("\n".join(lines))
+
+    def _mkdir(self, args: list[str]) -> CommandResult:
+        """Create one directory in the VFS."""
+        if len(args) != 1:
+            return self._usage("mkdir DIRECTORY")
+
+        try:
+            self.vfs.make_dir(args[0], self.cwd)
+        except VFSError as error:
+            return CommandResult(str(error), is_error=True)
+
+        return CommandResult()
 
     def _exit(self, args: list[str]) -> CommandResult:
         """Request application termination."""
         if args:
             return self._usage("exit")
-        return CommandResult(should_exit=True)
 
-    @staticmethod
-    def _error(error: Exception) -> CommandResult:
-        """Convert an exception to a command error result."""
-        return CommandResult(str(error), is_error=True)
+        return CommandResult(should_exit=True)
 
     @staticmethod
     def _usage(text: str) -> CommandResult:
         """Return an invalid-arguments error."""
-        return CommandResult(f"Usage: {text}", is_error=True)
+        return CommandResult(
+            f"Usage: {text}",
+            is_error=True,
+        )
