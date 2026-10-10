@@ -7,6 +7,10 @@ from datetime import date
 from vfs import VFSError, VirtualFileSystem
 
 
+CAL_MONTH_YEAR_ARGUMENT_COUNT = 2
+HEAD_COUNT_OPTION_ARGUMENT_COUNT = 3
+
+
 @dataclass
 class CommandResult:
     """Represent the result of a command."""
@@ -103,7 +107,7 @@ class ShellEmulator:
             elif len(args) == 1:
                 year = int(args[0])
                 text = calendar.calendar(year)
-            elif len(args) == 2:
+            elif len(args) == CAL_MONTH_YEAR_ARGUMENT_COUNT:
                 month = int(args[0])
                 year = int(args[1])
                 text = calendar.month(year, month)
@@ -123,7 +127,10 @@ class ShellEmulator:
 
         if len(args) == 1:
             path = args[0]
-        elif len(args) == 3 and args[0] == "-n":
+        elif (
+            len(args) == HEAD_COUNT_OPTION_ARGUMENT_COUNT
+            and args[0] == "-n"
+        ):
             try:
                 count = int(args[1])
             except ValueError:

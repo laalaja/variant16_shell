@@ -40,6 +40,11 @@ class ShellGUI:
 
     def _build_widgets(self) -> None:
         """Create output and input widgets."""
+        self._build_output()
+        self._build_command_line()
+
+    def _build_output(self) -> None:
+        """Create the command output area."""
         self.output = tk.Text(
             self.root,
             width=90,
@@ -53,6 +58,8 @@ class ShellGUI:
             pady=8,
         )
 
+    def _build_command_line(self) -> None:
+        """Create the prompt and command entry widgets."""
         frame = ttk.Frame(self.root)
         frame.pack(
             fill="x",
